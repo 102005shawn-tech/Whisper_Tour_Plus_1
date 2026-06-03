@@ -3,18 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Whisper Tour - 網頁無線電導覽系統</title>
+    <title>Whisper Tour Plus - 網頁無線電導覽系統</title>
+    <!-- 引入 Tailwind CSS 4.0 -->
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <!-- 🌐 官方最高速 LiveKit 晶片 -->
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.19.0/dist/livekit-client.umd.min.js" crossorigin="anonymous"></script>
+    <!-- 🎛️ 免費二維碼生成晶片 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-[#030712] min-h-screen flex flex-col md:flex-row items-center justify-center font-sans antialiased selection:bg-cyan-500/30 overflow-x-hidden relative">
 
+    <!-- 🌌 經典科技幾何發光背景 -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div class="absolute -top-[30%] -left-[20%] w-[70%] h-[70%] rounded-full bg-cyan-950/20 blur-[120px]"></div>
         <div class="absolute -bottom-[30%] -right-[20%] w-[70%] h-[70%] rounded-full bg-blue-950/25 blur-[120px]"></div>
     </div>
 
+    <!-- 🎨 左上角專屬 Logo -->
     <div class="z-20 w-full md:w-auto max-w-md md:max-w-none md:absolute md:top-12 md:left-12 flex items-center gap-4 px-6 pt-6 md:p-0 select-none">
         <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)] border border-cyan-300/20">
             <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -27,8 +33,10 @@
         </div>
     </div>
 
+    <!-- 主面板 -->
     <main class="w-full max-w-md mx-auto px-6 py-8 z-10 relative mt-4 md:mt-0">
         
+        <!-- Screen 1: 首頁 -->
         <div id="screen-1" class="space-y-8 block">
             <div class="text-center space-y-2">
                 <h2 class="text-4xl font-black text-white tracking-wider">開始導覽</h2>
@@ -46,13 +54,14 @@
             </div>
         </div>
 
+        <!-- Screen 2: 遊客登入填資料頁面 -->
         <div id="screen-2" class="hidden space-y-6">
             <button onclick="switchScreen(1)" class="text-slate-400 font-bold flex items-center gap-1 cursor-pointer">← 返回首頁</button>
             <div class="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-5">
                 <h3 class="text-xl font-bold text-white text-center border-b border-slate-800 pb-3">遊客登入頻道</h3>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1.5">請輸入房號</label>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5">頻道房號</label>
                         <input type="text" id="inputRoomCode" placeholder="請輸入 4 位數房號" maxlength="4" class="w-full px-4 py-3 border border-slate-700 rounded-xl text-center bg-slate-950 text-cyan-400 font-mono text-xl focus:outline-none">
                     </div>
                     <div>
@@ -65,15 +74,30 @@
             <p id="rxStatus" class="mt-4 text-center text-cyan-400 font-medium tracking-wide"></p>
         </div>
 
+        <!-- Screen 3: 導遊控制台 -->
         <div id="screen-3" class="hidden space-y-6">
             <button onclick="switchScreen(1)" class="text-slate-400 font-bold flex items-center gap-1 cursor-pointer">← 返回首頁</button>
             
-            <div class="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-6">
+            <div class="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-5">
                 <div class="text-center">
                     <span class="text-xs font-bold text-cyan-400 px-3 py-1 rounded-full bg-cyan-950/50 border border-cyan-500/20">無線電頻道</span>
-                    <h2 class="text-6xl font-black font-mono text-white mt-4 tracking-wider" id="displayRoomCode">1111</h2>
+                    <h2 class="text-6xl font-black font-mono text-white mt-2 tracking-wider" id="displayRoomCode">1111</h2>
                 </div>
 
+                <!-- 📱 導遊端：摺疊式 QR Code 抽屜區域 -->
+                <div class="space-y-3">
+                    <div class="flex justify-end">
+                        <button id="qrToggleBtn" onclick="toggleQRCode('guide')" disabled class="text-[11px] font-bold text-slate-500 border border-slate-800 bg-slate-950/40 px-3 py-1.5 rounded-lg transition tracking-wide opacity-40 cursor-not-allowed flex items-center gap-1">
+                            <span>📱</span> <span id="qrBtnText-guide">顯示 QR Code</span>
+                        </button>
+                    </div>
+                    <div id="qrcode-container-guide" class="hidden flex-col items-center justify-center bg-slate-950/90 p-5 rounded-xl border border-cyan-500/20">
+                        <p class="text-[10px] font-bold text-cyan-400 tracking-widest mb-3 uppercase">遊客掃描直接收聽</p>
+                        <div id="qrcode-guide" class="p-2.5 bg-white rounded-lg shadow-2xl"></div>
+                    </div>
+                </div>
+
+                <!-- 狀態顯示列 -->
                 <div class="flex items-center justify-between bg-slate-950 px-5 py-3.5 rounded-xl border border-slate-800">
                     <div class="flex items-center gap-2.5">
                         <span id="txSignalLight" class="w-2.5 h-2.5 rounded-full bg-slate-600 transition-all duration-300"></span>
@@ -84,8 +108,8 @@
                     </button>
                 </div>
 
-                <div class="flex justify-center my-6 select-none relative w-64 h-64 mx-auto items-center">
-                    
+                <!-- 🎙️ 核心發話大按鈕 -->
+                <div class="flex justify-center my-4 select-none relative w-64 h-64 mx-auto items-center">
                     <div id="micWaveRing" class="absolute inset-0 rounded-full border-4 border-cyan-500/30 bg-cyan-500/5 opacity-0 pointer-events-none transition-transform duration-75 ease-out"></div>
                     <div id="micWaveRingOuter" class="absolute inset-0 rounded-full border border-blue-500/20 opacity-0 pointer-events-none transition-transform duration-100 ease-out"></div>
 
@@ -100,9 +124,65 @@
                     </button>
                 </div>
 
+                <!-- 導遊端即時 CC 字幕預覽 -->
+                <div class="bg-black/60 border border-slate-800 p-4 rounded-xl text-center min-h-[60px] flex items-center justify-center">
+                    <p id="guide-cc-text" class="text-slate-400 font-mono text-xs tracking-wide">🎙️ 免費即時字幕：尚未說話</p>
+                </div>
+
                 <p id="guideTip" class="text-center text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
                     請先點擊「建立連線」，連線成功後<br><span class="text-cyan-500 font-bold">按住大按鈕</span>即可無線電發話。
                 </p>
+            </div>
+        </div>
+
+        <!-- 🎧 Screen 4: 遊客端專屬守聽儀表板 (完美符合草圖一規格) -->
+        <div id="screen-4" class="hidden space-y-6">
+            <div class="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-6">
+                
+                <!-- 頂部面板：房號與遊客暱稱 -->
+                <div class="text-center border-b border-slate-800/80 pb-4">
+                    <span class="text-xs font-bold text-emerald-400 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/20">無線電守聽中</span>
+                    <h2 class="text-5xl font-black font-mono text-white mt-3 tracking-wider" id="touristDisplayRoom">0000</h2>
+                    <p class="text-slate-400 text-xs mt-1.5 font-medium">遊客暱稱：<span id="touristDisplayNickname" class="text-cyan-400 font-bold">---</span></p>
+                </div>
+
+                <!-- 📱 遊客端：可折疊分享 QR Code 抽屜 -->
+                <div class="space-y-3">
+                    <div class="flex justify-end">
+                        <button id="qrToggleBtn-tourist" onclick="toggleQRCode('tourist')" class="text-[11px] font-bold text-cyan-400 border border-cyan-500/30 bg-slate-950/40 px-3 py-1.5 rounded-lg transition tracking-wide cursor-pointer flex items-center gap-1">
+                            <span>📱</span> <span id="qrBtnText-tourist">顯示分享 QR Code</span>
+                        </button>
+                    </div>
+                    <div id="qrcode-container-tourist" class="hidden flex-col items-center justify-center bg-slate-950/90 p-5 rounded-xl border border-emerald-500/20">
+                        <p class="text-[10px] font-bold text-emerald-400 tracking-widest mb-3 uppercase">分享給身邊團員掃描加入</p>
+                        <div id="qrcode-tourist" class="p-2.5 bg-white rounded-lg shadow-2xl"></div>
+                    </div>
+                </div>
+
+                <!-- 🎬 CC 字幕控制按鈕與選單列 -->
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3 justify-between">
+                        <button id="ccToggleBtn" onclick="toggleCCDisplay()" class="flex-1 bg-slate-900 border border-emerald-500/40 text-emerald-400 text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                            <span class="text-sm">💬</span> <span id="ccToggleText">CC 字幕：開啟</span>
+                        </button>
+                        <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl px-3 py-1">
+                            <span class="text-xs text-slate-400 font-bold font-mono mr-1">🌐</span>
+                            <select id="selectLanguage" disabled class="bg-transparent text-slate-300 text-xs font-bold focus:outline-none py-1.5 cursor-not-allowed">
+                                <option value="zh-TW" selected>中文 (免費)</option>
+                                <option value="ja">日本語 (Pro)</option>
+                                <option value="en">English (Pro)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 🎬 Netflix 風格長條形即時字幕列 -->
+                    <div class="bg-black/95 border border-slate-800 p-5 rounded-2xl text-center min-h-[90px] flex items-center justify-center shadow-inner">
+                        <p id="tourist-cc-text" class="text-emerald-400 font-medium text-base tracking-wide leading-relaxed">📢 導遊待機中，等待語音同步字幕...</p>
+                    </div>
+                </div>
+
+                <button onclick="switchScreen(1); location.reload();" class="w-full bg-slate-950 text-slate-400 border border-slate-800 font-bold py-3 rounded-xl cursor-pointer text-xs">安全退出頻道</button>
+
             </div>
         </div>
 
