@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Whisper Tour - 網頁無線電導覽系統</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.19.0/dist/livekit-client.umd.min.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#030712] min-h-screen flex flex-col md:flex-row items-center justify-center font-sans antialiased selection:bg-cyan-500/30 overflow-x-hidden relative">
+
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="absolute -top-[30%] -left-[20%] w-[70%] h-[70%] rounded-full bg-cyan-950/20 blur-[120px]"></div>
+        <div class="absolute -bottom-[30%] -right-[20%] w-[70%] h-[70%] rounded-full bg-blue-950/25 blur-[120px]"></div>
+    </div>
+
+    <div class="z-20 w-full md:w-auto max-w-md md:max-w-none md:absolute md:top-12 md:left-12 flex items-center gap-4 px-6 pt-6 md:p-0 select-none">
+        <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)] border border-cyan-300/20">
+            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 0 3-3v-6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"></path>
+            </svg>
+        </div>
+        <div class="flex flex-col">
+            <span class="text-2xl font-black text-white tracking-wider font-mono">Whisper Tour</span>
+            <span class="text-[10px] font-bold text-cyan-400/70 uppercase tracking-widest mt-0.5">Audio Guide System</span>
+        </div>
+    </div>
+
+    <main class="w-full max-w-md mx-auto px-6 py-8 z-10 relative mt-4 md:mt-0">
+        
+        <div id="screen-1" class="space-y-8 block">
+            <div class="text-center space-y-2">
+                <h2 class="text-4xl font-black text-white tracking-wider">開始導覽</h2>
+                <p class="text-slate-400 text-xs font-semibold">請選擇您的無線電操作身分</p>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="toGuideScreen()" class="bg-gradient-to-r from-cyan-600 to-cyan-700 text-white p-6 rounded-2xl shadow-xl transition active:scale-95 flex flex-col items-center justify-center gap-3 cursor-pointer">
+                    <span class="text-4xl">📢</span>
+                    <span class="text-xl font-bold block">我是導遊</span>
+                </button>
+                <button onclick="switchScreen(2)" class="bg-slate-900/60 text-white p-6 rounded-2xl shadow-xl transition active:scale-95 flex flex-col items-center justify-center gap-3 cursor-pointer border border-slate-800">
+                    <span class="text-4xl">🎧</span>
+                    <span class="text-xl font-bold block">我是遊客</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="screen-2" class="hidden space-y-6">
+            <button onclick="switchScreen(1)" class="text-slate-400 font-bold flex items-center gap-1 cursor-pointer">← 返回首頁</button>
+            <div class="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-5">
+                <h3 class="text-xl font-bold text-white text-center border-b border-slate-800 pb-3">遊客登入頻道</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5">請輸入房號</label>
+                        <input type="text" id="inputRoomCode" placeholder="請輸入 4 位數房號" maxlength="4" class="w-full px-4 py-3 border border-slate-700 rounded-xl text-center bg-slate-950 text-cyan-400 font-mono text-xl focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5">請輸入暱稱</label>
+                        <input type="text" id="inputNickname" placeholder="例如：Kevin" class="w-full px-4 py-3 border border-slate-700 rounded-xl text-center bg-slate-950 text-white focus:outline-none">
+                    </div>
+                </div>
+                <button onclick="enterTouristChannel()" class="w-full bg-cyan-600 text-white font-bold py-3.5 rounded-xl cursor-pointer shadow-lg shadow-cyan-600/30">確認加入頻道</button>
+            </div>
+            <p id="rxStatus" class="mt-4 text-center text-cyan-400 font-medium tracking-wide"></p>
+        </div>
+
+        <div id="screen-3" class="hidden space-y-6">
+            <button onclick="switchScreen(1)" class="text-slate-400 font-bold flex items-center gap-1 cursor-pointer">← 返回首頁</button>
+            
+            <div class="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-6">
+                <div class="text-center">
+                    <span class="text-xs font-bold text-cyan-400 px-3 py-1 rounded-full bg-cyan-950/50 border border-cyan-500/20">無線電頻道</span>
+                    <h2 class="text-6xl font-black font-mono text-white mt-4 tracking-wider" id="displayRoomCode">1111</h2>
+                </div>
+
+                <div class="flex items-center justify-between bg-slate-950 px-5 py-3.5 rounded-xl border border-slate-800">
+                    <div class="flex items-center gap-2.5">
+                        <span id="txSignalLight" class="w-2.5 h-2.5 rounded-full bg-slate-600 transition-all duration-300"></span>
+                        <span id="txStatusText" class="text-[11px] font-bold text-slate-400 font-mono tracking-widest">未連線</span>
+                    </div>
+                    <button onclick="connectAsGuide()" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-md shadow-cyan-600/20">
+                        建立連線
+                    </button>
+                </div>
+
+                <div class="flex justify-center my-6 select-none relative w-64 h-64 mx-auto items-center">
+                    
+                    <div id="micWaveRing" class="absolute inset-0 rounded-full border-4 border-cyan-500/30 bg-cyan-500/5 opacity-0 pointer-events-none transition-transform duration-75 ease-out"></div>
+                    <div id="micWaveRingOuter" class="absolute inset-0 rounded-full border border-blue-500/20 opacity-0 pointer-events-none transition-transform duration-100 ease-out"></div>
+
+                    <button
+                        id="mainMicBtn"
+                        disabled
+                        class="w-48 h-48 bg-slate-950 text-slate-700 rounded-full flex flex-col items-center justify-center border-[12px] border-slate-900 shadow-inner select-none transition-all duration-200 cursor-not-allowed opacity-40 touch-none z-10 relative"
+                        style="-webkit-user-select: none; -webkit-touch-callout: none; touch-action: none;"
+                    >
+                        <span id="micEmoji" class="text-5xl filter grayscale opacity-30 transition-all duration-200">🎙️</span>
+                        <span id="micBtnText" class="text-xs font-black mt-3 text-slate-500 tracking-wider">等待連線</span>
+                    </button>
+                </div>
+
+                <p id="guideTip" class="text-center text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                    請先點擊「建立連線」，連線成功後<br><span class="text-cyan-500 font-bold">按住大按鈕</span>即可無線電發話。
+                </p>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

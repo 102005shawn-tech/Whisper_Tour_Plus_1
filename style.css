@@ -1,0 +1,5 @@
+/* 專門負責處理對講機按鈕（PTT）被按住時的發光縮小動畫效果 */
+.ptt-active {
+    transform: scale(0.96);
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.7), inset 0 4px 10px rgba(0,0,0,0.4) !important;
+}
