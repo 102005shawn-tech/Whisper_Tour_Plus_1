@@ -1,4 +1,4 @@
-// app.js (草圖UI復刻 + 導遊/遊客雙端 QR Code 抽屜 + 免費 Web Speech CC 字幕大腦)
+// app.js (草圖UI復刻 + 導遊/遊客雙端 QR Code 抽屜 + 免費 Web Speech CC 字幕大腦 + 晶片載入安全保險絲)
 const LIVEKIT_SERVER_URL = "wss://whisper-tour-enlho56l.livekit.cloud";
 const VERCEL_BACKEND_URL = "https://whisper-tour-drab.vercel.app/api/token";
 
@@ -147,20 +147,41 @@ window.connectAsGuide = async function() {
   }
 }
 
-/* 🎛️ 統一高精細度 QR Code 生成引擎 */
+/* 🎛️ 統一高精細度 QR Code 生成引擎（含非同步安全預載保險絲） */
 function generateQRCodeEngine(elementId, roomCode) {
   const currentBaseUrl = window.location.origin + window.location.pathname;
   const touristInviteUrl = `${currentBaseUrl}?room=${roomCode}`;
-  document.getElementById(elementId).innerHTML = "";
   
-  new QRCode(document.getElementById(elementId), {
-    text: touristInviteUrl,
-    width: 140,
-    height: 140,
-    colorDark: "#000000",
-    colorLight: "#ffffff",
-    correctLevel: QRCode.CorrectLevel.H
-  });
+  const targetContainer = document.getElementById(elementId);
+  if (!targetContainer) return;
+  targetContainer.innerHTML = "";
+  
+  // 🛡️ 安全保險絲：檢查外部 QRCode 晶片是否已經過電載入
+  if (typeof QRCode === "undefined") {
+    console.warn("⚠️ 二維碼晶片尚未就緒，啟動黑客延遲補載機制...");
+    targetContainer.innerHTML = "<p class='text-xs text-slate-500 py-4'>系統安全模組載入中，請稍候...</p>";
+    
+    setTimeout(() => {
+      generateQRCodeEngine(elementId, roomCode);
+    }, 800);
+    return;
+  }
+
+  try {
+    // 🎨 晶片確認就緒，正式繪製二維碼
+    new QRCode(targetContainer, {
+      text: touristInviteUrl,
+      width: 140,
+      height: 140,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+    console.log(`✅ [${elementId}] 二維碼物理繪製成功！`);
+  } catch (err) {
+    console.error("QR 繪製失敗:", err);
+    targetContainer.innerHTML = "<p class='text-xs text-red-400 py-4'>二維碼生成失敗，請重試</p>";
+  }
 }
 
 /* 🧠 初始化免費語音辨識大腦 */
@@ -180,10 +201,10 @@ function initFreeSpeechRecognition() {
     for (let i = event.resultIndex; i < event.results.length; ++i) {
       resultText += event.results[i][0].transcript;
     }
-    // 1. 更新導遊自己的小預覽
+    // 更新導遊自己的小預覽
     document.getElementById("guide-cc-text").innerText = "💬 " + resultText;
 
-    // 2. 📡 通過 LiveKit 數據通道秒級閃電盲發出去
+    // 📡 通過 LiveKit 數據通道秒級閃電盲發出去
     if (currentRoom && resultText.trim() !== "") {
       const encoder = new TextEncoder();
       const payload = encoder.encode(JSON.stringify({ type: "cc-subtitle", text: resultText }));
@@ -242,7 +263,7 @@ async function stopTransmission(e) {
     if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
     audioAnalyser = null;
     document.getElementById("micWaveRing").style.transform = "scale(1)"; document.getElementById("micWaveRing").style.opacity = "0";
-    document.getElementById("qrcode-container-guide").style.transform = "scale(1)";
+    document.getElementById("micWaveRingOuter").style.transform = "scale(1)"; document.getElementById("micWaveRingOuter").style.opacity = "0";
     if (speechRecognizer) { try { speechRecognizer.stop(); } catch(err){} }
   } catch (err) { console.error(err); }
 }
@@ -250,57 +271,4 @@ async function stopTransmission(e) {
 /* 🎧 遊客加入頻道 */
 window.enterTouristChannel = async function() {
   try {
-    const roomCode = document.getElementById("inputRoomCode").value.trim();
-    const nickname = document.getElementById("inputNickname").value.trim() || "匿名遊客";
-    if (!roomCode) return alert('請輸入房號！');
-
-    document.getElementById("rxStatus").innerText = "正在獲取安全通行證...";
-    const response = await fetch(`${VERCEL_BACKEND_URL}?room=${roomCode}&identity=${encodeURIComponent(nickname)}&isGuide=false`);
-    const data = await response.json();
-    
-    document.getElementById("rxStatus").innerText = "正在接入對講頻道...";
-    const LK = window.LiveKitClient || window.LivekitClient || LiveKitClient;
-    currentRoom = new LK.Room();
-
-    // 🔊 監聽語音串流
-    currentRoom.on(LK.RoomEvent.TrackSubscribed, (track) => {
-      if (track.kind === "audio") {
-        track.attach();
-        document.getElementById("rxStatus").innerText = "已成功接入頻道！";
-        
-        // 🚀 一鍵切換至 Screen 4 遊客專屬守聽儀表板
-        switchScreen(4);
-        document.getElementById("touristDisplayRoom").innerText = roomCode;
-        document.getElementById("touristDisplayNickname").innerText = nickname;
-        
-        // 📱 在背景同步繪製好遊客端分享 QR Code
-        generateQRCodeEngine("qrcode-tourist", roomCode);
-      }
-    });
-    
-    currentRoom.on(LK.RoomEvent.TrackUnsubscribed, (track) => {
-      if (track.kind === "audio") {
-        document.getElementById("rxStatus").innerText = "頻道待機守聽中";
-      }
-    });
-
-    // 🎬 監聽並解碼導遊發過來的 CC 字幕數據
-    currentRoom.on(LK.RoomEvent.DataReceived, (payload, participant) => {
-      if (!isCCEnabled) return; 
-      try {
-        const decoder = new TextEncoder();
-        const data = JSON.parse(decoder.decode(payload));
-        if (data.type === "cc-subtitle") {
-          document.getElementById("tourist-cc-text").innerText = data.text;
-        }
-      } catch (err) { console.error(err); }
-    });
-
-    await currentRoom.connect(LIVEKIT_SERVER_URL, data.token);
-
-  } catch (err) {
-    console.error(err);
-    document.getElementById("rxStatus").innerText = "連線失敗";
-    alert("加入失敗：" + err.message);
-  }
-}
+    const roomCode = document.getElementById("inputRoomCode
