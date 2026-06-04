@@ -1,4 +1,4 @@
-// app.js (終極穩健版：物理封殺所有死循環，確保 LiveKit 秒連線)
+// app.js (終極穩健版：改用 api.qrserver.com 物理直出二維碼，絕不破圖死鎖)
 const LIVEKIT_SERVER_URL = "wss://whisper-tour-enlho56l.livekit.cloud";
 const VERCEL_BACKEND_URL = "https://whisper-tour-drab.vercel.app/api/token";
 
@@ -117,10 +117,10 @@ window.connectAsGuide = async function() {
     qrBtn.classList.remove("opacity-40", "cursor-not-allowed");
     qrBtn.classList.add("border-cyan-500/40", "text-cyan-400", "cursor-pointer");
     
-    // 🚀 核心物理直出：利用 Google Charts API 免費快速生成二維碼圖片，0延遲、不爆CPU
+    // 🚀 換上全新、開源穩定的二維碼引擎連結，0運算、秒級出圖
     const currentBaseUrl = window.location.origin + window.location.pathname;
     const touristInviteUrl = `${currentBaseUrl}?room=${currentRoomCode}`;
-    document.getElementById("qr-img-guide").src = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(touristInviteUrl)}`;
+    document.getElementById("qr-img-guide").src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(touristInviteUrl)}`;
 
     btn.onmousedown = startTransmission; btn.onmouseup = stopTransmission;
     btn.ontouchstart = startTransmission; btn.ontouchend = stopTransmission;
@@ -224,10 +224,10 @@ window.enterTouristChannel = async function() {
         document.getElementById("touristDisplayRoom").innerText = roomCode;
         document.getElementById("touristDisplayNickname").innerText = nickname;
         
-        // 🚀 遊客端同步改用穩定的 Google QR Code 圖片源
+        // 🚀 遊客端同步改用全新的穩定二維碼連結
         const currentBaseUrl = window.location.origin + window.location.pathname;
         const touristInviteUrl = `${currentBaseUrl}?room=${roomCode}`;
-        document.getElementById("qr-img-tourist").src = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(touristInviteUrl)}`;
+        document.getElementById("qr-img-tourist").src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(touristInviteUrl)}`;
       }
     });
     
