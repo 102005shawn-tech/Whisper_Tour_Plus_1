@@ -1,4 +1,4 @@
-// app.js (終極穩健完全體： api.qrserver 物理直出二維碼 + 防死鎖相容型字幕大腦)
+// app.js (終極自動化：連線即字幕開機，徹底繞過平板長按干擾)
 const LIVEKIT_SERVER_URL = "wss://whisper-tour-enlho56l.livekit.cloud";
 const VERCEL_BACKEND_URL = "https://whisper-tour-drab.vercel.app/api/token";
 
@@ -7,6 +7,7 @@ let currentRoomCode = "";
 let audioAnalyser = null; 
 let animationId = null;   
 let speechRecognizer = null;
+let isTransmitting = false; // 發話狀態鎖
 
 let isCCEnabled = true;
 
@@ -117,7 +118,6 @@ window.connectAsGuide = async function() {
     qrBtn.classList.remove("opacity-40", "cursor-not-allowed");
     qrBtn.classList.add("border-cyan-500/40", "text-cyan-400", "cursor-pointer");
     
-    // 🚀 核心圖形直出：api.qrserver.com 開源高速引擎
     const currentBaseUrl = window.location.origin + window.location.pathname;
     const touristInviteUrl = `${currentBaseUrl}?room=${currentRoomCode}`;
     document.getElementById("qr-img-guide").src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(touristInviteUrl)}`;
@@ -125,6 +125,7 @@ window.connectAsGuide = async function() {
     btn.onmousedown = startTransmission; btn.onmouseup = stopTransmission;
     btn.ontouchstart = startTransmission; btn.ontouchend = stopTransmission;
     
+    // 🚀 核心進化：連線成功立刻讓字幕大腦常駐開機，不跟長按綁定
     initFreeSpeechRecognition();
   } catch (err) {
     document.getElementById("txStatusText").innerText = "連線失敗";
@@ -136,7 +137,7 @@ window.connectAsGuide = async function() {
 function initFreeSpeechRecognition() {
   const SpeechClass = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechClass) {
-    document.getElementById("guide-cc-text").innerText = "⚠️ 瀏覽器不支援免費字幕晶片，請換 Chrome 測試";
+    document.getElementById("guide-cc-text").innerText = "⚠️ 瀏覽器不支援免費字幕晶片";
     return;
   }
   
@@ -161,17 +162,21 @@ function initFreeSpeechRecognition() {
     }
   };
 
-  // 🔄 防卡死斷線：當導遊講話停頓導致辨識自動結束時，強制背景無縫重新啟動
+  // 🔄 只要還在房間裡，斷開就自動無限重啟
   speechRecognizer.onend = () => {
-    if (document.getElementById("txStatusText").innerText === "TRANSMIT (TX)") {
+    if (currentRoom) {
       try { speechRecognizer.start(); } catch(e) {}
     }
   };
+
+  // ⚡ 啟動常駐聽寫
+  try { speechRecognizer.start(); } catch(e) {}
 }
 
 async function startTransmission(e) {
-  if (e) { e.preventDefault(); e.stopPropagation(); }
-  if (!currentRoom) return;
+  if (e) { if (e.cancelable) e.preventDefault(); e.stopPropagation(); }
+  if (!currentRoom || isTransmitting) return;
+  isTransmitting = true;
   try {
     await currentRoom.localParticipant.setMicrophoneEnabled(true);
     document.getElementById("txStatusText").innerText = "TRANSMIT (TX)";
@@ -198,15 +203,13 @@ async function startTransmission(e) {
       }
       animateWave();
     }
-    
-    // 🎤 發話瞬間，同步召喚語音辨識開機
-    if (speechRecognizer) { try { speechRecognizer.start(); } catch(err){} }
-  } catch (err) { console.error(err); }
+  } catch (err) { console.error(err); isTransmitting = false; }
 }
 
 async function stopTransmission(e) {
-  if (e) { e.preventDefault(); e.stopPropagation(); }
-  if (!currentRoom) return;
+  if (e) { if (e.cancelable) e.preventDefault(); e.stopPropagation(); }
+  if (!currentRoom || !isTransmitting) return;
+  isTransmitting = false;
   try {
     await currentRoom.localParticipant.setMicrophoneEnabled(false);
     document.getElementById("txStatusText").innerText = "STANDBY (守聽)";
@@ -220,9 +223,6 @@ async function stopTransmission(e) {
     audioAnalyser = null;
     document.getElementById("micWaveRing").style.transform = "scale(1)"; document.getElementById("micWaveRing").style.opacity = "0";
     document.getElementById("micWaveRingOuter").style.transform = "scale(1)"; document.getElementById("micWaveRingOuter").style.opacity = "0";
-    
-    // 🔇 放開按鈕，立刻關閉語音辨識省電
-    if (speechRecognizer) { try { speechRecognizer.stop(); } catch(err){} }
   } catch (err) { console.error(err); }
 }
 
@@ -261,7 +261,7 @@ window.enterTouristChannel = async function() {
     currentRoom.on(LK.RoomEvent.DataReceived, (payload, participant) => {
       if (!isCCEnabled) return; 
       try {
-        const decoder = new TextDecoder();
+        const decoder = new TextEncoder();
         const data = JSON.parse(decoder.decode(payload));
         if (data.type === "cc-subtitle") { document.getElementById("tourist-cc-text").innerText = data.text; }
       } catch (err) { console.error(err); }
