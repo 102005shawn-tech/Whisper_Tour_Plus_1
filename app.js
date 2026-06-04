@@ -1,4 +1,4 @@
-// app.js (自帶防爆顯微鏡警報器版本)
+// app.js (終極穩健版：物理封殺所有死循環，確保 LiveKit 秒連線)
 const LIVEKIT_SERVER_URL = "wss://whisper-tour-enlho56l.livekit.cloud";
 const VERCEL_BACKEND_URL = "https://whisper-tour-drab.vercel.app/api/token";
 
@@ -16,7 +16,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (autoRoom && autoRoom.trim().length === 4) {
     switchScreen(2);
     document.getElementById("inputRoomCode").value = autoRoom.trim();
-    document.getElementById("rxStatus").innerText = "📢 已透過 QR Code 鎖定頻道，請輸入暱稱後點擊確認加入";
+    document.getElementById("rxStatus").innerText = "📢 已透過 QR Code 鎖定頻道，請輸入暱稱後加入";
   }
 });
 
@@ -54,7 +54,6 @@ window.toGuideScreen = function() {
   qrBtn.classList.remove("border-cyan-500/40", "text-cyan-400", "cursor-pointer");
   document.getElementById("qrBtnText-guide").innerText = "顯示 QR Code";
   document.getElementById("qrcode-container-guide").style.display = "none";
-  document.getElementById("qrcode-guide").innerHTML = "";
 }
 
 window.toggleQRCode = function(identity) {
@@ -118,8 +117,10 @@ window.connectAsGuide = async function() {
     qrBtn.classList.remove("opacity-40", "cursor-not-allowed");
     qrBtn.classList.add("border-cyan-500/40", "text-cyan-400", "cursor-pointer");
     
-    // 📡 呼叫大腦畫 QR Code
-    generateQRCodeEngine("qrcode-guide", currentRoomCode);
+    // 🚀 核心物理直出：利用 Google Charts API 免費快速生成二維碼圖片，0延遲、不爆CPU
+    const currentBaseUrl = window.location.origin + window.location.pathname;
+    const touristInviteUrl = `${currentBaseUrl}?room=${currentRoomCode}`;
+    document.getElementById("qr-img-guide").src = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(touristInviteUrl)}`;
 
     btn.onmousedown = startTransmission; btn.onmouseup = stopTransmission;
     btn.ontouchstart = startTransmission; btn.ontouchend = stopTransmission;
@@ -128,40 +129,6 @@ window.connectAsGuide = async function() {
     document.getElementById("txStatusText").innerText = "連線失敗";
     document.getElementById("txSignalLight").className = "w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]";
     alert("導遊連線失敗：" + err.message);
-  }
-}
-
-function generateQRCodeEngine(elementId, roomCode) {
-  const currentBaseUrl = window.location.origin + window.location.pathname;
-  const touristInviteUrl = `${currentBaseUrl}?room=${roomCode}`;
-  const targetContainer = document.getElementById(elementId);
-  if (!targetContainer) return;
-  targetContainer.innerHTML = "";
-  
-  // 🔬 顯微鏡第一步：物理檢查晶片到底在不在
-  if (typeof QRCode === "undefined") {
-    targetContainer.innerHTML = "<p class='text-xs text-slate-500 py-4'>安全模組連線中...</p>";
-    // 改用更快的 300ms 循環，並在控制台留下痕跡
-    console.log("晶片尚未就緒，等待補載...");
-    setTimeout(() => { generateQRCodeEngine(elementId, roomCode); }, 300);
-    return;
-  }
-
-  try {
-    // 🔬 顯微鏡第二步：強行畫圖，如果有錯直接抓去彈窗
-    new QRCode(targetContainer, {
-      text: touristInviteUrl,
-      width: 140,
-      height: 140,
-      colorDark: "#000000",
-      colorLight: "#ffffff",
-      correctLevel: QRCode.CorrectLevel.H
-    });
-    console.log("二維碼物理生成成功！");
-  } catch (err) { 
-    // 🔥 如果在這邊 Crash 掉，平板會直接彈出黑底白字的大警報！
-    alert("💥 晶片畫圖發生嚴重錯誤：\n" + err.message);
-    targetContainer.innerHTML = `<p class='text-xs text-red-400 py-4'>繪製失敗: ${err.message}</p>`;
   }
 }
 
@@ -256,7 +223,11 @@ window.enterTouristChannel = async function() {
         switchScreen(4);
         document.getElementById("touristDisplayRoom").innerText = roomCode;
         document.getElementById("touristDisplayNickname").innerText = nickname;
-        generateQRCodeEngine("qrcode-tourist", roomCode);
+        
+        // 🚀 遊客端同步改用穩定的 Google QR Code 圖片源
+        const currentBaseUrl = window.location.origin + window.location.pathname;
+        const touristInviteUrl = `${currentBaseUrl}?room=${roomCode}`;
+        document.getElementById("qr-img-tourist").src = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(touristInviteUrl)}`;
       }
     });
     
