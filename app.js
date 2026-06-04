@@ -1,4 +1,4 @@
-// app.js (終極穩健版：改用 api.qrserver.com 物理直出二維碼，絕不破圖死鎖)
+// app.js (終極穩健完全體： api.qrserver 物理直出二維碼 + 防死鎖相容型字幕大腦)
 const LIVEKIT_SERVER_URL = "wss://whisper-tour-enlho56l.livekit.cloud";
 const VERCEL_BACKEND_URL = "https://whisper-tour-drab.vercel.app/api/token";
 
@@ -117,13 +117,14 @@ window.connectAsGuide = async function() {
     qrBtn.classList.remove("opacity-40", "cursor-not-allowed");
     qrBtn.classList.add("border-cyan-500/40", "text-cyan-400", "cursor-pointer");
     
-    // 🚀 換上全新、開源穩定的二維碼引擎連結，0運算、秒級出圖
+    // 🚀 核心圖形直出：api.qrserver.com 開源高速引擎
     const currentBaseUrl = window.location.origin + window.location.pathname;
     const touristInviteUrl = `${currentBaseUrl}?room=${currentRoomCode}`;
     document.getElementById("qr-img-guide").src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(touristInviteUrl)}`;
 
     btn.onmousedown = startTransmission; btn.onmouseup = stopTransmission;
     btn.ontouchstart = startTransmission; btn.ontouchend = stopTransmission;
+    
     initFreeSpeechRecognition();
   } catch (err) {
     document.getElementById("txStatusText").innerText = "連線失敗";
@@ -134,17 +135,36 @@ window.connectAsGuide = async function() {
 
 function initFreeSpeechRecognition() {
   const SpeechClass = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechClass) return;
+  if (!SpeechClass) {
+    document.getElementById("guide-cc-text").innerText = "⚠️ 瀏覽器不支援免費字幕晶片，請換 Chrome 測試";
+    return;
+  }
+  
   speechRecognizer = new SpeechClass();
-  speechRecognizer.continuous = true; speechRecognizer.interimResults = true; speechRecognizer.lang = 'zh-TW';        
+  speechRecognizer.continuous = true; 
+  speechRecognizer.interimResults = true; 
+  speechRecognizer.lang = 'zh-TW';        
+
   speechRecognizer.onresult = (event) => {
     let resultText = "";
-    for (let i = event.resultIndex; i < event.results.length; ++i) { resultText += event.results[i][0].transcript; }
-    document.getElementById("guide-cc-text").innerText = "💬 " + resultText;
-    if (currentRoom && resultText.trim() !== "") {
-      const encoder = new TextEncoder();
-      const payload = encoder.encode(JSON.stringify({ type: "cc-subtitle", text: resultText }));
-      currentRoom.localParticipant.publishData(payload, { reliable: true });
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      resultText += event.results[i][0].transcript;
+    }
+    
+    if (resultText.trim() !== "") {
+      document.getElementById("guide-cc-text").innerText = "💬 " + resultText;
+      if (currentRoom) {
+        const encoder = new TextEncoder();
+        const payload = encoder.encode(JSON.stringify({ type: "cc-subtitle", text: resultText }));
+        currentRoom.localParticipant.publishData(payload, { reliable: true });
+      }
+    }
+  };
+
+  // 🔄 防卡死斷線：當導遊講話停頓導致辨識自動結束時，強制背景無縫重新啟動
+  speechRecognizer.onend = () => {
+    if (document.getElementById("txStatusText").innerText === "TRANSMIT (TX)") {
+      try { speechRecognizer.start(); } catch(e) {}
     }
   };
 }
@@ -178,6 +198,8 @@ async function startTransmission(e) {
       }
       animateWave();
     }
+    
+    // 🎤 發話瞬間，同步召喚語音辨識開機
     if (speechRecognizer) { try { speechRecognizer.start(); } catch(err){} }
   } catch (err) { console.error(err); }
 }
@@ -198,6 +220,8 @@ async function stopTransmission(e) {
     audioAnalyser = null;
     document.getElementById("micWaveRing").style.transform = "scale(1)"; document.getElementById("micWaveRing").style.opacity = "0";
     document.getElementById("micWaveRingOuter").style.transform = "scale(1)"; document.getElementById("micWaveRingOuter").style.opacity = "0";
+    
+    // 🔇 放開按鈕，立刻關閉語音辨識省電
     if (speechRecognizer) { try { speechRecognizer.stop(); } catch(err){} }
   } catch (err) { console.error(err); }
 }
@@ -224,7 +248,6 @@ window.enterTouristChannel = async function() {
         document.getElementById("touristDisplayRoom").innerText = roomCode;
         document.getElementById("touristDisplayNickname").innerText = nickname;
         
-        // 🚀 遊客端同步改用全新的穩定二維碼連結
         const currentBaseUrl = window.location.origin + window.location.pathname;
         const touristInviteUrl = `${currentBaseUrl}?room=${roomCode}`;
         document.getElementById("qr-img-tourist").src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(touristInviteUrl)}`;
@@ -238,7 +261,7 @@ window.enterTouristChannel = async function() {
     currentRoom.on(LK.RoomEvent.DataReceived, (payload, participant) => {
       if (!isCCEnabled) return; 
       try {
-        const decoder = new TextEncoder();
+        const decoder = new TextDecoder();
         const data = JSON.parse(decoder.decode(payload));
         if (data.type === "cc-subtitle") { document.getElementById("tourist-cc-text").innerText = data.text; }
       } catch (err) { console.error(err); }
